@@ -1,3 +1,0 @@
-[server]
-maxUploadSize = 2000    # e.g., 2000 MB
-maxMessageSize = 2000   # also 2000 MB
