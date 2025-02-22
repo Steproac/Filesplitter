@@ -3,14 +3,17 @@ import pandas as pd
 import os
 import io
 import zipfile
+import gzip
 
 st.set_page_config(page_title="File Splitter", layout="wide")
-st.title("Worksheet/CSV/TXT Splitter")
-
+st.title("Worksheet/CSV/TXT Splitter (Compressed)")
 
 st.markdown("""
-This app allows you to upload an Excel or CSV file and split the data into multiple groups based on a selected column.
-Each group is exported as a CSV file, and all files are compressed into a single ZIP file.
+This app allows you to upload an Excel, CSV, or TXT file, split the data into multiple groups based on a selected column, 
+and **compress** each group as a `.csv.gz` file inside a single `.zip` for download.
+
+**Note**: This compression only applies to the exported files, not to the upload itself. 
+If your file is very large, you may still need to adjust or respect Streamlit’s upload limits.
 """)
 
 # Allow Excel, CSV, and TXT file formats
@@ -44,16 +47,25 @@ if uploaded_file:
                 # Group the DataFrame by the selected column
                 groups = df.groupby(split_column)
 
-                # Helper function to create an in-memory ZIP archive of CSV files for each group
+                # Helper function to create an in-memory ZIP archive
+                # of GZIP-compressed CSV files for each group
                 def create_zip_buffer():
                     zip_buffer = io.BytesIO()
                     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                         for group_name, group_df in groups:
+                            # Convert group to CSV (string)
+                            csv_string = group_df.to_csv(index=False)
+
+                            # Compress the CSV data with gzip
+                            compressed_data = gzip.compress(csv_string.encode("utf-8"))
+
                             # Sanitize group name for a safe filename
                             safe_name = str(group_name).replace(" ", "_")
-                            file_name = f"group_{safe_name}.csv"
-                            csv_data = group_df.to_csv(index=False)
-                            zip_file.writestr(file_name, csv_data)
+                            file_name = f"group_{safe_name}.csv.gz"
+
+                            # Write the compressed bytes to the ZIP
+                            zip_file.writestr(file_name, compressed_data)
+                    
                     zip_buffer.seek(0)
                     return zip_buffer
 
